@@ -1,0 +1,35 @@
+const express = require('express'); 
+const mongoose = require('mongoose'); 
+const session = require('express-session'); 
+const bcrypt = require('bcrypt'); 
+const nodemailer = require('nodemailer'); 
+
+const app = express(); 
+app.use(express.json()); 
+app.use(session({ secret: 'secret', resave: false, saveUninitialized: true })); 
+
+// MongoDB connection 
+mongoose.connect('mongodb://localhost/spiceroute', { useNewUrlParser: true, useUnifiedTopology: true }); 
+
+// User schema 
+const userSchema = new mongoose.Schema({ 
+  email: String, 
+  password: String, 
+  foodPreferences: [String], 
+}); 
+const User = mongoose.model('User', userSchema); 
+
+// Registration route 
+app.post('/register', async (req, res) => { 
+  const hashedPassword = await bcrypt.hash(req.body.password, 10); 
+  const user = new User({ email: req.body.email, password: hashedPassword, foodPreferences: req.body.preferences }); 
+  await user.save(); 
+
+  // Send email 
+  let transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'your_email@gmail.com', pass: 'app_password' } }); 
+  await transporter.sendMail({ from: 'your_email@gmail.com', to: req.body.email, subject: 'Welcome!', text: 'Thanks for registering.' }); 
+
+  res.status(201).send('User registered'); 
+}); 
+
+app.listen(3000, () => console.log('Server running on port 3000'));
